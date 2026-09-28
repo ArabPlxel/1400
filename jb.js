@@ -4,6 +4,9 @@ import { int64 } from "./int64.js?v=20";
 import { offsetsFor } from "./ps4_offsets.js?v=20";
 import { findImportByName, listImports } from "./imports.lib.js?v=20";
 
+try { if (window.diag) window.diag("jb.js executing"); } catch(e) {}
+
+
 const outEl = document.getElementById("out");
 const stateEl = document.getElementById("state");
 const lines = [];
