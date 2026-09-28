@@ -335,6 +335,19 @@ let allDone = false,
     const errorFn = p.read8(webkitBase.add32(off.wk___imp___error));
     const libkernelBase = errorFn.sub32(off.k__error);
     mark("BASES", "webkit=" + webkitBase + " libkernel=" + libkernelBase);
+            // ===== USERLAND PROOF (14.00 test) =====
+            try {
+              document.body.style.background = "#0a0";
+              document.body.innerHTML =
+                "<h1 style=\'color:#fff;font-size:96px;text-align:center;margin-top:30vh;\'>USERLAND OK</h1>" +
+                "<p style=\'color:#fff;font-size:24px;text-align:center;\'>webkit=" +
+                webkitBase + " libkernel=" + libkernelBase + "</p>";
+              mark("USERLAND-PROOF", "screen painted green");
+            } catch (e) {
+              mark("USERLAND-PROOF-FAIL", e.toString());
+            }
+            // ===== END USERLAND PROOF =====
+
     const aligned = (v) => v.hi > 0 && (v.low & 0x3fff) === 0;
     if (
       !check(
