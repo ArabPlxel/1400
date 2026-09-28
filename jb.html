@@ -36,7 +36,7 @@ window.diag = function(msg, cls) {
     if (out) out.textContent = window.__lines.join('\n');
 };
 window.addEventListener('error', function(e) {
-    window.diag('JS ERROR: ' + e.message + ' @ ' + (e.filename||'').split('/').pop() + ':' + e.lineno, '');
+    window.diag('JS ERROR: ' + e.message + ' @ ' + (e.filename||'').split('/').pop() + ':' + e.lineno);
 });
 window.addEventListener('unhandledrejection', function(e) {
     var r = e.reason;
@@ -44,6 +44,6 @@ window.addEventListener('unhandledrejection', function(e) {
 });
 </script>
 
-<script type="module" src="jb.js?v=20"></script>
+<script type="module" src="jb.js?v=21"></script>
 </body>
 </html>
