@@ -2,6 +2,7 @@ import { establishPrimitive } from "./core.js?v=10";
 import { installWindowP, pairStatus } from "./mem.js";
 import { int64 } from "./int64.js";
 import { offsetsFor } from "./ps4_offsets.js";
+import { PS4Notif } from "./ps4notif.lib.js";
 
 const outEl = document.getElementById("out");
 const stateEl = document.getElementById("state");
@@ -335,88 +336,25 @@ let allDone = false,
     const errorFn = p.read8(webkitBase.add32(off.wk___imp___error));
     const libkernelBase = errorFn.sub32(off.k__error);
     mark("BASES", "webkit=" + webkitBase + " libkernel=" + libkernelBase);
-            // ===== USERLAND NOTIFICATION (no kernel needed) =====
-            try {
-              var SYS_getLoadedModules = 592;
-              var SYS_getModuleInfo = 593;
-              var NOTIFY_NID = 0x2C68F1F8;
+            // ===== USERLAND NOTIFICATION via ps4notif.lib.js =====
+            (function () {
+              var log = window.__log || console.log.bind(console);
+              try {
+                log("BASES webkit=" + webkitBase + " libkernel=" + libkernelBase);
+                document.body.style.background = "#0a0";
+                document.body.setAttribute("data-userland", "ok");
 
-              // Allocate scratch: 1KB for module list, 0x200 for info
-              var scratch = sc(SYS.mmap, 0, 0x2000, 3, 0x1002, -1, 0);
-              var scratchAddr = new int64(scratch.lo, scratch.hi);
-              mark("NOTIF-SCRATCH", "addr=" + scratchAddr);
+                var scratch = sc(SYS.mmap, 0, 0x2000, 3, 0x1002, -1, 0);
+                var scratchAddr = new int64(scratch.lo, scratch.hi);
+                log("scratch=" + scratchAddr);
 
-              // Get module count
-              var countAddr = scratchAddr.add32(0x1000);
-              sc(SYS_getLoadedModules, 0, 0, 0); // query count
-              var modCount = sc(SYS_getLoadedModules, scratchAddr, 256, countAddr);
-              mark("NOTIF-MODCOUNT", "rc=" + modCount + " count=" + p.read4(countAddr).low);
-
-              var sysutilBase = 0;
-              var infoAddr = scratchAddr.add32(0x800);
-              for (var mi = 0; mi < 256; mi++) {
-                var h = p.read4(scratchAddr.add32(mi * 4)).low;
-                if (h === 0) break;
-                p.write8(infoAddr, new int64(0x200, 0));
-                var rc = sc(SYS_getModuleInfo, h, infoAddr);
-                if (rc !== 0) continue;
-                var nameLo = p.read4(infoAddr.add32(8)).low;
-                var nameHi = p.read4(infoAddr.add32(12)).low;
-                if (nameLo === 0 && nameHi === 0) continue;
-                var name = "";
-                for (var k = 0; k < 32; k++) {
-                  var c = p.read1(infoAddr.add32(8 + k)).low & 0xff;
-                  if (c === 0) break;
-                  name += String.fromCharCode(c);
-                }
-                if (name.indexOf("SysUtil") >= 0) {
-                  sysutilBase = p.read8(infoAddr.add32(0x108));
-                  mark("NOTIF-FOUND", name + " base=" + sysutilBase);
-                  break;
-                }
+                var ok = PS4Notif.send(p, sc, callAddr, int64, scratchAddr,
+                                       "14.00 USERLAND OK", log);
+                log("notif sent=" + ok);
+              } catch (e) {
+                log("notif-exception " + String(e));
               }
-
-              if (sysutilBase !== 0 && typeof sysutilBase !== 'number') {
-                // Scan export table for NID
-                // PS4 export table: base + 0x40 (mod count) ... this varies.
-                // Try a generic scan: look for the NID as u32 in the first 0x20000 bytes
-                var notifyFn = 0;
-                for (var o = 0; o < 0x20000; o += 4) {
-                  var v = p.read4(sysutilBase.add32(o)).low;
-                  if (v === NOTIFY_NID) {
-                    // NID found; the export entry usually has the function ptr a few bytes later
-                    // Walk forward for a pointer within the module's code range
-                    for (var d = 4; d < 0x100; d += 4) {
-                      var ptr = p.read8(sysutilBase.add32(o + d));
-                      if (ptr.hi >>> 0 > 0 && (ptr.low & 0xfff) < 0x1000) {
-                        notifyFn = ptr;
-                        break;
-                      }
-                    }
-                    if (notifyFn) break;
-                  }
-                }
-
-                if (notifyFn !== 0) {
-                  var msgStr = "14.00 USERLAND OK";
-                  var msgAddr = scratchAddr.add32(0x1800);
-                  for (var mi2 = 0; mi2 < msgStr.length; mi2++) {
-                    p.write1(msgAddr.add32(mi2), msgStr.charCodeAt(mi2));
-                  }
-                  p.write1(msgAddr.add32(msgStr.length), 0);
-
-                  mark("NOTIF-CALL", "fn=" + notifyFn + " msg=" + msgAddr);
-                  var rc2 = callAddr(notifyFn, [0, msgAddr]).i32;
-                  mark("NOTIF-RESULT", "rc=" + rc2);
-                } else {
-                  mark("NOTIF-NO-FN", "NID scan failed");
-                }
-              } else {
-                mark("NOTIF-NO-MOD", "libSceSysUtil not found");
-              }
-            } catch (e) {
-              mark("NOTIF-ERR", String(e));
-            }
+            })();
             // ===== END USERLAND NOTIFICATION =====
 
     const aligned = (v) => v.hi > 0 && (v.low & 0x3fff) === 0;
