@@ -3,8 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>RAW GAME</title>
 <style>
@@ -26,17 +24,21 @@
 </style>
 </head>
 <body>
-<div id="diag">HTML LOADED - waiting for jb.js</div>
+<div id="diag">HTML LOADED</div>
 <div id="brand">RAW GAME</div>
 <div id="wrap"><div id="out"></div></div>
-<div id="paste">pastefy: waiting...</div>
+<div id="paste">pastefy: idle</div>
 
 <script>
 window.__lines = [];
 window.__t0 = Date.now();
-window.__pasteSent = false;
+window.__lastPaste = 0;
+window.__pasteInFlight = false;
+window.__pasteURL = null;
 
-window.diag = function(msg, isErr) {
+var PASTEFY_KEY = "rO80IGK4jjFccAO04fIf9L9kpkNlCVheclpiAdV6u7a95Q7fqqsPxM2HA8oG";
+
+window.diag = function (msg, isErr) {
     var t = ((Date.now() - window.__t0) / 1000).toFixed(2);
     var line = "[" + t + "s] " + msg;
     var el = document.getElementById('diag');
@@ -45,30 +47,24 @@ window.diag = function(msg, isErr) {
     var out = document.getElementById('out');
     if (out) { out.textContent = window.__lines.join('\n'); out.scrollTop = out.scrollHeight; }
     console.log(line);
+    // Throttled pastefy upload: at most 1 per 1.5s
+    var now = Date.now();
+    if (!window.__pasteInFlight && now - window.__lastPaste > 1500) {
+        window.__uploadToPastefy();
+    }
 };
 
-window.addEventListener('error', function(e) {
-    window.diag('JS ERROR: ' + e.message + ' @ ' + (e.filename||'').split('/').pop() + ':' + e.lineno, true);
-});
-window.addEventListener('unhandledrejection', function(e) {
-    var r = e.reason;
-    window.diag('PROMISE REJECT: ' + (r && r.message ? r.message : r), true);
-});
-
-// ============================================================
-// Upload log to pastefy after 10s
-// ============================================================
 window.__uploadToPastefy = function () {
-    if (window.__pasteSent) return;
-    window.__pasteSent = true;
+    if (window.__pasteInFlight) return;
+    window.__pasteInFlight = true;
+    window.__lastPaste = Date.now();
 
     var pasteEl = document.getElementById('paste');
     var body = window.__lines.join('\n');
-
-    if (pasteEl) pasteEl.textContent = "pastefy: uploading " + body.length + " chars...";
+    if (pasteEl && !window.__pasteURL) pasteEl.textContent = "pastefy: sending " + body.length + " chars...";
 
     var payload = JSON.stringify({
-        title: "ps4-14.00-" + new Date().toISOString().slice(0,19),
+        title: "ps4-14.00-" + new Date().toISOString().slice(0, 19),
         content: body,
         type: "PASTE",
         visibility: "UNLISTED"
@@ -77,41 +73,53 @@ window.__uploadToPastefy = function () {
     var xhr = new XMLHttpRequest();
     xhr.open("POST", "https://pastefy.app/api/v2/paste", true);
     xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.setRequestHeader("Authorization", "Bearer rO80IGK4jjFccAO04fIf9L9kpkNlCVheclpiAdV6u7a95Q7fqqsPxM2HA8oG");
+    xhr.setRequestHeader("Authorization", "Bearer " + PASTEFY_KEY);
+    xhr.timeout = 5000;
 
     xhr.onload = function () {
+        window.__pasteInFlight = false;
         if (xhr.status >= 200 && xhr.status < 300) {
             try {
-                var resp = JSON.parse(xhr.responseText);
-                var url = "https://pastefy.app/" + (resp.id || "");
-                if (pasteEl) pasteEl.innerHTML = 'pastefy: <a href="' + url + '" target="_blank">' + url + '</a>';
+                var r = JSON.parse(xhr.responseText);
+                var pid = (r.paste && r.paste.id) || r.id || "";
+                window.__pasteURL = "https://pastefy.app/" + pid;
+                if (pasteEl) pasteEl.innerHTML = 'pastefy: <a href="' + window.__pasteURL + '" target="_blank">' + window.__pasteURL + '</a>';
             } catch (e) {
-                if (pasteEl) pasteEl.textContent = "pastefy: sent (parse err) " + xhr.responseText.slice(0,100);
+                if (pasteEl) pasteEl.textContent = "pastefy: parse err " + xhr.responseText.slice(0, 80);
             }
         } else {
-            if (pasteEl) pasteEl.textContent = "pastefy: HTTP " + xhr.status + " " + xhr.responseText.slice(0,100);
+            if (pasteEl) pasteEl.textContent = "pastefy: HTTP " + xhr.status + " " + xhr.responseText.slice(0, 80);
         }
     };
     xhr.onerror = function () {
+        window.__pasteInFlight = false;
         if (pasteEl) pasteEl.textContent = "pastefy: network error (CORS?)";
+    };
+    xhr.ontimeout = function () {
+        window.__pasteInFlight = false;
     };
     xhr.send(payload);
 };
 
-// Schedule the upload at 3s, 6s, and 10s (only the first one succeeds)
-[3000, 6000, 10000].forEach(function (delay) {
-    setTimeout(function () {
-        if (!window.__pasteSent) {
-            window.__uploadToPastefy();
-        } else if (delay === 10000) {
-            // re-send at 10s to capture more log lines
-            window.__pasteSent = false;
-            window.__uploadToPastefy();
-        }
-    }, delay);
+// On JS error, force an upload immediately
+window.addEventListener('error', function (e) {
+    window.diag('JS ERROR: ' + e.message + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno, true);
+    window.__pasteInFlight = false;
+    window.__uploadToPastefy();
 });
+window.addEventListener('unhandledrejection', function (e) {
+    var r = e.reason;
+    window.diag('PROMISE REJECT: ' + (r && r.message ? r.message : r), true);
+    window.__pasteInFlight = false;
+    window.__uploadToPastefy();
+});
+
+// Periodic retry every 2s
+setInterval(function () {
+    if (!window.__pasteInFlight) window.__uploadToPastefy();
+}, 2000);
 </script>
 
-<script type="module" src="jb.js?v=23"></script>
+<script type="module" src="jb.js?v=24"></script>
 </body>
 </html>
