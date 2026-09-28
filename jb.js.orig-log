@@ -49,8 +49,8 @@ function terse(s) {
   return s;
 }
 
-const SHOW_LOG = true;
-if (document.body) document.body.className = "log";
+const SHOW_LOG = params.get("log") === "1";
+if (SHOW_LOG && document.body) document.body.className = "log";
 function finishUI(ok) {
   if (SHOW_LOG || !document.body) return;
   const m = document.getElementById("msg");
