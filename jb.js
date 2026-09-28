@@ -338,13 +338,12 @@ let allDone = false,
             // ===== USERLAND PROOF (14.00 test) =====
             try {
               document.body.style.background = "#0a0";
-              document.body.innerHTML =
-                "<h1 style=\'color:#fff;font-size:96px;text-align:center;margin-top:30vh;\'>USERLAND OK</h1>" +
-                "<p style=\'color:#fff;font-size:24px;text-align:center;\'>webkit=" +
-                webkitBase + " libkernel=" + libkernelBase + "</p>";
+              var html = "<h1 style='color:#fff;font-size:96px;text-align:center;margin-top:30vh;'>USERLAND OK</h1>";
+              html += "<p style='color:#fff;font-size:20px;text-align:center;'>webkit=" + webkitBase + " libkernel=" + libkernelBase + "</p>";
+              document.body.innerHTML = html;
               mark("USERLAND-PROOF", "screen painted green");
             } catch (e) {
-              mark("USERLAND-PROOF-FAIL", e.toString());
+              mark("USERLAND-PROOF-FAIL", String(e));
             }
             // ===== END USERLAND PROOF =====
 
