@@ -148,7 +148,19 @@
 
 
 </head>
-  <body class="log">
+  
+<div id="diag" style="position:fixed;top:0;left:0;right:0;background:#f00;color:#fff;font:16px monospace;padding:10px;z-index:99999;text-align:center;">
+  HTML LOADED — waiting for module...
+</div>
+<script>
+  window.diag = function(msg) {
+    var el = document.getElementById('diag');
+    if (el) el.textContent = msg;
+  };
+  setTimeout(function(){ window.diag("STILL WAITING at " + new Date().toISOString()); }, 3000);
+</script>
+
+<body class="log">
 
 <script>
 window.__logLines = window.__logLines || [];
