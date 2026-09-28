@@ -11,11 +11,15 @@
   html, body { margin:0; padding:0; background:#0b0d10; color:#c8ced8;
                font:13px/1.4 monospace; }
   #diag { position:fixed; top:0; left:0; right:0; padding:8px;
-          background:#a00; color:#fff; z-index:99999; text-align:center; }
-  #diag.ok { background:#080; }
-  #wrap { padding:60px 12px 12px 12px; }
-  #out { white-space:pre-wrap; font-size:11px; color:#8f8;
-         max-height:80vh; overflow:auto; }
+          background:#080; color:#fff; z-index:99999; text-align:center; }
+  #diag.err { background:#a00; }
+  #wrap { padding:60px 12px 80px 12px; }
+  #out { white-space:pre-wrap; font-size:11px; color:#0f0;
+         max-height:65vh; overflow:auto; }
+  #paste { position:fixed; bottom:0; left:0; right:0; padding:8px;
+           background:#111; color:#8f8; text-align:center; font-size:12px;
+           border-top:1px solid #333; z-index:9999; }
+  #paste a { color:#7fd; }
   #brand { padding:8px; background:#0e1116; border-bottom:1px solid #1e2732;
            position:fixed; top:30px; left:0; right:0; text-align:center;
            font-weight:700; letter-spacing:0.14em; color:#e6ebf2; z-index:9998; }
@@ -25,25 +29,89 @@
 <div id="diag">HTML LOADED - waiting for jb.js</div>
 <div id="brand">RAW GAME</div>
 <div id="wrap"><div id="out"></div></div>
+<div id="paste">pastefy: waiting...</div>
 
 <script>
 window.__lines = [];
-window.diag = function(msg, cls) {
+window.__t0 = Date.now();
+window.__pasteSent = false;
+
+window.diag = function(msg, isErr) {
+    var t = ((Date.now() - window.__t0) / 1000).toFixed(2);
+    var line = "[" + t + "s] " + msg;
     var el = document.getElementById('diag');
-    if (el) { el.textContent = msg; el.className = cls || ''; }
-    window.__lines.push(msg);
+    if (el) { el.textContent = msg; el.className = isErr ? 'err' : ''; }
+    window.__lines.push(line);
     var out = document.getElementById('out');
-    if (out) out.textContent = window.__lines.join('\n');
+    if (out) { out.textContent = window.__lines.join('\n'); out.scrollTop = out.scrollHeight; }
+    console.log(line);
 };
+
 window.addEventListener('error', function(e) {
-    window.diag('JS ERROR: ' + e.message + ' @ ' + (e.filename||'').split('/').pop() + ':' + e.lineno);
+    window.diag('JS ERROR: ' + e.message + ' @ ' + (e.filename||'').split('/').pop() + ':' + e.lineno, true);
 });
 window.addEventListener('unhandledrejection', function(e) {
     var r = e.reason;
-    window.diag('PROMISE REJECT: ' + (r && r.message ? r.message : r));
+    window.diag('PROMISE REJECT: ' + (r && r.message ? r.message : r), true);
+});
+
+// ============================================================
+// Upload log to pastefy after 10s
+// ============================================================
+window.__uploadToPastefy = function () {
+    if (window.__pasteSent) return;
+    window.__pasteSent = true;
+
+    var pasteEl = document.getElementById('paste');
+    var body = window.__lines.join('\n');
+
+    if (pasteEl) pasteEl.textContent = "pastefy: uploading " + body.length + " chars...";
+
+    var payload = JSON.stringify({
+        title: "ps4-14.00-" + new Date().toISOString().slice(0,19),
+        content: body,
+        type: "PASTE",
+        visibility: "UNLISTED"
+    });
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "https://pastefy.app/api/v2/paste", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.setRequestHeader("Authorization", "Bearer rO80IGK4jjFccAO04fIf9L9kpkNlCVheclpiAdV6u7a95Q7fqqsPxM2HA8oG");
+
+    xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+                var resp = JSON.parse(xhr.responseText);
+                var url = "https://pastefy.app/" + (resp.id || "");
+                if (pasteEl) pasteEl.innerHTML = 'pastefy: <a href="' + url + '" target="_blank">' + url + '</a>';
+            } catch (e) {
+                if (pasteEl) pasteEl.textContent = "pastefy: sent (parse err) " + xhr.responseText.slice(0,100);
+            }
+        } else {
+            if (pasteEl) pasteEl.textContent = "pastefy: HTTP " + xhr.status + " " + xhr.responseText.slice(0,100);
+        }
+    };
+    xhr.onerror = function () {
+        if (pasteEl) pasteEl.textContent = "pastefy: network error (CORS?)";
+    };
+    xhr.send(payload);
+};
+
+// Schedule the upload at 3s, 6s, and 10s (only the first one succeeds)
+[3000, 6000, 10000].forEach(function (delay) {
+    setTimeout(function () {
+        if (!window.__pasteSent) {
+            window.__uploadToPastefy();
+        } else if (delay === 10000) {
+            // re-send at 10s to capture more log lines
+            window.__pasteSent = false;
+            window.__uploadToPastefy();
+        }
+    }, delay);
 });
 </script>
 
-<script type="module" src="jb.js?v=21"></script>
+<script type="module" src="jb.js?v=23"></script>
 </body>
 </html>

@@ -1,8 +1,8 @@
-import { establishPrimitive } from "./core.js?v=21";
-import { installWindowP, pairStatus } from "./mem.js?v=21";
-import { int64 } from "./int64.js?v=21";
-import { offsetsFor } from "./ps4_offsets.js?v=21";
-import { findImportByName, listImports } from "./imports.lib.js?v=21";
+import { establishPrimitive } from "./core.js?v=23";
+import { installWindowP, pairStatus } from "./mem.js?v=23";
+import { int64 } from "./int64.js?v=23";
+import { offsetsFor } from "./ps4_offsets.js?v=23";
+import { findImportByName, listImports } from "./imports.lib.js?v=23";
 
 try { if (window.diag) window.diag("jb.js executing"); } catch(e) {}
 
