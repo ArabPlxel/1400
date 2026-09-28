@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>noti-1400</title>
+</head>
+<body style="background:#111;color:#eee;font-family:monospace;padding:20px;">
+<h1 id="status">loading...</h1>
+<div id="log" style="white-space:pre-wrap;"></div>
+<script>
+const log = (m) => {
+    document.getElementById('log').textContent += "\n" + m;
+    console.log(m);
+};
+const setStatus = (s) => {
+    document.getElementById('status').textContent = s;
+};
+
+setStatus("exploit starting");
+log("page loaded, ua=" + navigator.userAgent);
+
+const loadScript = (src) => new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => { log(src + " loaded"); resolve(); };
+    s.onerror = () => { log(src + " FAILED"); reject(new Error(src)); };
+    document.head.appendChild(s);
+});
+
+(async () => {
+    try {
+        await loadScript('int64.js');
+        await loadScript('mem.js');
+        await loadScript('ps4_offsets.js');
+        await loadScript('rpc_worker.js');
+        await loadScript('core.js');
+        await loadScript('jb.js');
+        setStatus("chain loaded — waiting for result");
+        log("all scripts loaded");
+    } catch (e) {
+        setStatus("load error: " + e.message);
+    }
+})();
+
+window.addEventListener('error', (e) => {
+    log("js error: " + e.message);
+});
+</script>
+</body>
+</html>
