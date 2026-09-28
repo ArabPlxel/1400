@@ -1,10 +1,6 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" manifest="cache.appcache">
   <head>
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>RAW GAME</title>
@@ -173,7 +169,7 @@ window.__logLines = window.__logLines || [];
       <div id="out"></div>
     </div>
     <script type="module">
-      import "./jb.js?t=" + Date.now();
+      import "./jb.js";
     </script>
   </body>
 </html>

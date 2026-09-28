@@ -1,8 +1,8 @@
-import { establishPrimitive } from "./core.js?v=10";
-import { installWindowP, pairStatus } from "./mem.js";
-import { int64 } from "./int64.js";
-import { offsetsFor } from "./ps4_offsets.js";
-import { PS4Notif } from "./ps4notif.lib.js";
+import { establishPrimitive } from "./core.js?t=" + Date.now();
+import { installWindowP, pairStatus } from "./mem.js?t=" + Date.now();
+import { int64 } from "./int64.js?t=" + Date.now();
+import { offsetsFor } from "./ps4_offsets.js?t=" + Date.now();
+import { PS4Notif } from "./ps4notif.lib.js?t=" + Date.now();
 
 const outEl = document.getElementById("out");
 const stateEl = document.getElementById("state");
