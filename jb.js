@@ -1,11 +1,10 @@
-import { establishPrimitive } from "./core.js?t=" + Date.now();
-import { installWindowP, pairStatus } from "./mem.js?t=" + Date.now();
-import { int64 } from "./int64.js?t=" + Date.now();
-import { offsetsFor } from "./ps4_offsets.js?t=" + Date.now();
-import { PS4Notif } from "./ps4notif.lib.js?t=" + Date.now();
+import { establishPrimitive } from "./core.js?v=10";
+import { installWindowP, pairStatus } from "./mem.js";
+import { int64 } from "./int64.js";
+import { offsetsFor } from "./ps4_offsets.js";
+import { findImportByName, listImports } from "./imports.lib.js";
 
 const outEl = document.getElementById("out");
-setTimeout(function(){ try{ mark("MARK-BOOT", "jb.js evaluated"); }catch(e){} }, 0);
 const stateEl = document.getElementById("state");
 const lines = [];
 let passCount = 0,
@@ -51,7 +50,7 @@ function terse(s) {
 }
 
 const SHOW_LOG = true;
-if (document.body) document.body.className = "log";
+if (SHOW_LOG && document.body) document.body.className = "log";
 function finishUI(ok) {
   if (SHOW_LOG || !document.body) return;
   const m = document.getElementById("msg");
@@ -337,26 +336,42 @@ let allDone = false,
     const errorFn = p.read8(webkitBase.add32(off.wk___imp___error));
     const libkernelBase = errorFn.sub32(off.k__error);
     mark("BASES", "webkit=" + webkitBase + " libkernel=" + libkernelBase);
-            // ===== USERLAND NOTIFICATION via ps4notif.lib.js =====
-            (function () {
-              var log = window.__log || console.log.bind(console);
-              try {
-                log("BASES webkit=" + webkitBase + " libkernel=" + libkernelBase);
-                document.body.style.background = "#0a0";
-                document.body.setAttribute("data-userland", "ok");
+            // ===== USERLAND NOTIF via WebKit PLT/GOT (no FTP, no kernel) =====
+            try {
+              document.body.style.background = "#0a0";
+              var ok = true;
 
-                var scratch = sc(SYS.mmap, 0, 0x2000, 3, 0x1002, -1, 0);
-                var scratchAddr = new int64(scratch.lo, scratch.hi);
-                log("scratch=" + scratchAddr);
+              // First, list everything WebKit imports from SysUtil
+              var sysutilImports = listImports(p, webkitBase, "SysUtil");
+              var notifImports   = listImports(p, webkitBase, "Notif");
+              mark("IMPORTS-SYSUTIL", sysutilImports.length + " -> " + sysutilImports.slice(0, 5).join(","));
+              mark("IMPORTS-NOTIF",   notifImports.length + " -> " + notifImports.slice(0, 5).join(","));
 
-                var ok = PS4Notif.send(p, sc, callAddr, int64, scratchAddr,
-                                       "14.00 USERLAND OK", log);
-                log("notif sent=" + ok);
-              } catch (e) {
-                log("notif-exception " + String(e));
+              // Find the notification
+              var hit = findImportByName(p, webkitBase, "sceSysUtilSendSystemNotificationWithText");
+              if (!hit) {
+                mark("NOTIF-NOT-IMPORTED", "webkit does not import it");
+              } else {
+                var fn = hit.fn;
+                mark("NOTIF-FOUND", "fn=" + fn + " slot=0x" + hit.slot.low.toString(16));
+
+                // allocate message buffer
+                var msg = "14.00 USERLAND OK";
+                var buf = sc(SYS.mmap, 0, 0x100, 3, 0x1002, -1, 0);
+                var bufAddr = new int64(buf.lo, buf.hi);
+                for (var i = 0; i < msg.length; i++) {
+                  p.write1(bufAddr.add32(i), msg.charCodeAt(i));
+                }
+                p.write1(bufAddr.add32(msg.length), 0);
+
+                // call notify(0, buf)
+                var rc = callAddr(fn, [0, bufAddr]).i32;
+                mark("NOTIF-CALL", "rc=" + rc);
               }
-            })();
-            // ===== END USERLAND NOTIFICATION =====
+            } catch (e) {
+              mark("NOTIF-ERR", String(e));
+            }
+            // ===== END =====
 
     const aligned = (v) => v.hi > 0 && (v.low & 0x3fff) === 0;
     if (
