@@ -5,6 +5,7 @@ import { offsetsFor } from "./ps4_offsets.js?t=" + Date.now();
 import { PS4Notif } from "./ps4notif.lib.js?t=" + Date.now();
 
 const outEl = document.getElementById("out");
+setTimeout(function(){ try{ mark("MARK-BOOT", "jb.js evaluated"); }catch(e){} }, 0);
 const stateEl = document.getElementById("state");
 const lines = [];
 let passCount = 0,
