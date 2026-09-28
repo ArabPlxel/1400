@@ -32,7 +32,7 @@
 <script>
 window.__lines = [];
 window.__t0 = Date.now();
-window.__lastPaste = 0;
+window.__lastPasteAttempt = 0;
 window.__pasteInFlight = false;
 window.__pasteURL = null;
 
@@ -47,24 +47,18 @@ window.diag = function (msg, isErr) {
     var out = document.getElementById('out');
     if (out) { out.textContent = window.__lines.join('\n'); out.scrollTop = out.scrollHeight; }
     console.log(line);
-    // Throttled pastefy upload: at most 1 per 1.5s
-    var now = Date.now();
-    if (!window.__pasteInFlight && now - window.__lastPaste > 1500) {
-        window.__uploadToPastefy();
-    }
 };
 
-window.__uploadToPastefy = function () {
+window.__uploadNow = function () {
     if (window.__pasteInFlight) return;
     window.__pasteInFlight = true;
-    window.__lastPaste = Date.now();
+    window.__lastPasteAttempt = Date.now();
 
     var pasteEl = document.getElementById('paste');
-    var body = window.__lines.join('\n');
-    if (pasteEl && !window.__pasteURL) pasteEl.textContent = "pastefy: sending " + body.length + " chars...";
+    var body = window.__lines.join('\n') || "(no log yet)";
 
     var payload = JSON.stringify({
-        title: "ps4-14.00-" + new Date().toISOString().slice(0, 19),
+        title: "ps4-14.00-" + Date.now(),
         content: body,
         type: "PASTE",
         visibility: "UNLISTED"
@@ -73,8 +67,7 @@ window.__uploadToPastefy = function () {
     var xhr = new XMLHttpRequest();
     xhr.open("POST", "https://pastefy.app/api/v2/paste", true);
     xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.setRequestHeader("Authorization", "Bearer " + PASTEFY_KEY);
-    xhr.timeout = 5000;
+    xhr.timeout = 4000;
 
     xhr.onload = function () {
         window.__pasteInFlight = false;
@@ -85,15 +78,15 @@ window.__uploadToPastefy = function () {
                 window.__pasteURL = "https://pastefy.app/" + pid;
                 if (pasteEl) pasteEl.innerHTML = 'pastefy: <a href="' + window.__pasteURL + '" target="_blank">' + window.__pasteURL + '</a>';
             } catch (e) {
-                if (pasteEl) pasteEl.textContent = "pastefy: parse err " + xhr.responseText.slice(0, 80);
+                if (pasteEl) pasteEl.textContent = "pastefy: parse err";
             }
         } else {
-            if (pasteEl) pasteEl.textContent = "pastefy: HTTP " + xhr.status + " " + xhr.responseText.slice(0, 80);
+            if (pasteEl) pasteEl.textContent = "pastefy: HTTP " + xhr.status;
         }
     };
     xhr.onerror = function () {
         window.__pasteInFlight = false;
-        if (pasteEl) pasteEl.textContent = "pastefy: network error (CORS?)";
+        if (pasteEl) pasteEl.textContent = "pastefy: network err (CORS?)";
     };
     xhr.ontimeout = function () {
         window.__pasteInFlight = false;
@@ -101,25 +94,36 @@ window.__uploadToPastefy = function () {
     xhr.send(payload);
 };
 
-// On JS error, force an upload immediately
 window.addEventListener('error', function (e) {
     window.diag('JS ERROR: ' + e.message + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno, true);
-    window.__pasteInFlight = false;
-    window.__uploadToPastefy();
+    window.__uploadNow();
 });
 window.addEventListener('unhandledrejection', function (e) {
     var r = e.reason;
     window.diag('PROMISE REJECT: ' + (r && r.message ? r.message : r), true);
-    window.__pasteInFlight = false;
-    window.__uploadToPastefy();
+    window.__uploadNow();
 });
 
-// Periodic retry every 2s
+// Aggressive: every 500ms upload regardless of log changes
 setInterval(function () {
-    if (!window.__pasteInFlight) window.__uploadToPastefy();
-}, 2000);
+    window.__uploadNow();
+}, 500);
+
+// Also, first upload as soon as we have any log
+setTimeout(function () { window.__uploadNow(); }, 200);
 </script>
 
-<script type="module" src="jb.js?v=24"></script>
+<script type="module">
+(async function () {
+    try {
+        window.diag("importing jb.js...");
+        await import("./jb.js?v=25");
+        window.diag("jb.js module evaluated OK");
+    } catch (e) {
+        window.diag("MODULE ERROR: " + (e && e.message ? e.message : String(e)) + (e && e.stack ? " | " + e.stack.split("\\n").slice(0,3).join(" | ") : ""), true);
+        window.__uploadNow();
+    }
+})();
+</script>
 </body>
 </html>
