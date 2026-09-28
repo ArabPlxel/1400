@@ -6,47 +6,48 @@ import { findImportByName, listImports } from "./imports.lib.js?v=24";
 
 try { if (window.diag) window.diag("jb.js executing"); } catch(e) {}
 
-
-try { if (window.diag) window.diag("JB-LINE-1: const outEl = document.getElementById(\"out\");"); } catch(e) {}
+try { if (window.diag) window.diag("MARK: outEl defined"); } catch(e) {}
 const outEl = document.getElementById("out");
-try { if (window.diag) window.diag("JB-LINE-2: const stateEl = document.getElementById(\"state\");"); } catch(e) {}
+
+try { if (window.diag) window.diag("MARK: stateEl defined"); } catch(e) {}
 const stateEl = document.getElementById("state");
-try { if (window.diag) window.diag("JB-LINE-3: const lines = [];"); } catch(e) {}
+
+try { if (window.diag) window.diag("MARK: lines array created"); } catch(e) {}
 const lines = [];
-try { if (window.diag) window.diag("JB-LINE-4: let passCount = 0,"); } catch(e) {}
+
 let passCount = 0,
-try { if (window.diag) window.diag("JB-LINE-5: failCount = 0;"); } catch(e) {}
+
   failCount = 0;
-try { if (window.diag) window.diag("JB-LINE-6: let armedEver = false;"); } catch(e) {}
+
 let armedEver = false;
-try { if (window.diag) window.diag("JB-LINE-7: const params = new URLSearchParams(location.search"); } catch(e) {}
+
 const params = new URLSearchParams(location.search);
-try { if (window.diag) window.diag("JB-LINE-8: const STOP_BEFORE_DOUBLE = params.get(\"stop\") === "); } catch(e) {}
+
 const STOP_BEFORE_DOUBLE = params.get("stop") === "beforedouble";
 
-try { if (window.diag) window.diag("JB-LINE-9: function post(tag, detail) {"); } catch(e) {}
+try { if (window.diag) window.diag("MARK: post() defined"); } catch(e) {}
 function post(tag, detail) {
-try { if (window.diag) window.diag("JB-LINE-10: try {"); } catch(e) {}
+
   try {
-try { if (window.diag) window.diag("JB-LINE-11: const x = new XMLHttpRequest();"); } catch(e) {}
+
     const x = new XMLHttpRequest();
-try { if (window.diag) window.diag("JB-LINE-12: x.open(\"POST\", \"/t\", true);"); } catch(e) {}
+
     x.open("POST", "/t", true);
-try { if (window.diag) window.diag("JB-LINE-13: x.setRequestHeader(\"Content-Type\", \"application/x-"); } catch(e) {}
+
     x.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-try { if (window.diag) window.diag("JB-LINE-14: x.send("); } catch(e) {}
+
     x.send(
-try { if (window.diag) window.diag("JB-LINE-15: \"PS4-JB&tag=\" +"); } catch(e) {}
+
       "PS4-JB&tag=" +
-try { if (window.diag) window.diag("JB-LINE-16: encodeURIComponent(tag) +"); } catch(e) {}
+
         encodeURIComponent(tag) +
-try { if (window.diag) window.diag("JB-LINE-17: \"&detail=\" +"); } catch(e) {}
+
         "&detail=" +
-try { if (window.diag) window.diag("JB-LINE-18: encodeURIComponent(String(detail == null ? \"\" : de"); } catch(e) {}
+
         encodeURIComponent(String(detail == null ? "" : detail)),
-try { if (window.diag) window.diag("JB-LINE-19: );"); } catch(e) {}
+
     );
-try { if (window.diag) window.diag("JB-LINE-20: } catch (e) {}"); } catch(e) {}
+
   } catch (e) {}
 }
 
@@ -85,6 +86,7 @@ function finishUI(ok) {
         : "Refresh the page and run again";
   document.body.className = ok ? "done" : "fail";
 }
+try { if (window.diag) window.diag("MARK: mark() defined"); } catch(e) {}
 function mark(tag, detail) {
   const raw = detail;
   detail = terse(detail);
